@@ -2,69 +2,58 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download Exam Result</title>
+    <title>B.Ed Result Portal</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 40px 15px; background: #f4f7f6; }
-        .card { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        input { width: 90%; padding: 12px; margin: 15px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
-        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; width: 95%; }
-        button:disabled { background: #888; }
+        body { font-family: sans-serif; text-align: center; padding: 50px 15px; background: #f0f2f5; }
+        .card { max-width: 380px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        input { width: 90%; padding: 12px; margin: 15px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 12px; width: 95%; font-size: 16px; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #aaa; }
         #status { margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>B.Ed 4th Sem Result</h2>
-    <p>Enter your Roll Number to download PDF</p>
-    
-    <input type="text" id="rollNumber" placeholder="e.g., 2536510001" maxlength="15">
-    <button id="downloadBtn" onclick="requestResult()">Download PDF</button>
-    
+    <h2>Check B.Ed 4th Sem Result</h2>
+    <input type="text" id="rollNumber" placeholder="Enter Roll Number">
+    <button id="submitBtn" onclick="openResult()">View Result</button>
     <div id="status"></div>
 </div>
 
 <script>
-async function requestResult() {
+async function openResult() {
     const roll = document.getElementById("rollNumber").value.trim();
     const status = document.getElementById("status");
-    const btn = document.getElementById("downloadBtn");
+    const btn = document.getElementById("submitBtn");
 
     if (!roll) {
-        status.innerText = "Please enter a roll number.";
+        status.innerText = "Please enter your roll number.";
         status.style.color = "red";
         return;
     }
 
     btn.disabled = true;
-    status.innerText = "Fetching result from University portal...";
+    status.innerText = "Fetching result...";
     status.style.color = "#007bff";
 
     try {
-        // Replace with your actual backend server URL once deployed (e.g. Render/Railway)
-        const BACKEND_URL = "https://bedresult-production.up.railway.app/download-result"; 
-
-        const response = await fetch(BACKEND_URL, {
+        const response = await fetch("https://bedresult-production.up.railway.app/get-result-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ roll_number: roll })
         });
 
-        if (response.ok) {
-            // Converts response stream to blob for direct phone download
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = downloadUrl;
-            a.download = `Result_${roll}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            
-            status.innerText = "Download complete!";
+        const data = await response.json();
+
+        if (response.ok && data.result_url) {
+            status.innerText = "Redirecting to result...";
             status.style.color = "green";
+            
+            // Redirect the user's tab directly to the PRSU result page
+            window.location.href = data.result_url;
         } else {
-            status.innerText = "Result not found or server busy.";
+            status.innerText = "Result not found. Check roll number.";
             status.style.color = "red";
         }
     } catch (err) {
