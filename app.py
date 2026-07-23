@@ -1,20 +1,23 @@
+import os
+import time
+import base64
+import asyncio
 from flask import Flask, request, send_file, jsonify, make_response
 from flask_cors import CORS
+from playwright.async_api import async_playwright
 
 app = Flask(__name__)
 
-# Allow requests specifically from your GitHub Pages origin
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+# Initialize CORS globally for all routes and origins
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Add an explicit handler for preflight OPTIONS requests
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-        return response, 200
+# Force-inject CORS headers into EVERY response (including errors & preflights)
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    return response
 
 BASE_URL = "https://exam.prsuuniv.in"
 LOGIN_URL = f"{BASE_URL}/prsuresult/login"
@@ -23,17 +26,21 @@ async def fetch_and_generate_pdf(roll_number):
     output_filename = f"Result_{roll_number}.pdf"
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        # Launch Chromium with extra flags for containerized server environments
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+        )
         context = await browser.new_context(viewport={'width': 1280, 'height': 800})
         page = await context.new_page()
 
         try:
             # 1. Open Portal
-            await page.goto(LOGIN_URL, wait_until="domcontentloaded")
+            await page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
 
             # 2. Open Result Modal
             await page.click("#result_section2019")
-            await page.wait_for_selector("#coursename")
+            await page.wait_for_selector("#coursename", timeout=15000)
 
             # 3. Select Form Details
             await page.select_option("#coursename", "Bachelor of Education")
@@ -75,10 +82,8 @@ async def fetch_and_generate_pdf(roll_number):
                 redirect_path = res.get("redirect", "").strip('"')
                 full_url = f"{BASE_URL}{redirect_path}"
 
-                # Navigate to the result page
-                await page.goto(full_url, wait_until="networkidle")
+                await page.goto(full_url, wait_until="networkidle", timeout=30000)
                 
-                # Render to PDF
                 pdf_bytes = await page.pdf(
                     format="A4",
                     print_background=True,
@@ -95,31 +100,40 @@ async def fetch_and_generate_pdf(roll_number):
                 return None
 
         except Exception as e:
+            print(f"Error during Playwright execution: {e}")
             await browser.close()
-            print(f"Error: {e}")
             return None
 
-@app.route('/download-result', methods=['POST'])
+# CRUCIAL FIX: Allow both POST and OPTIONS explicitly on the route
+@app.route('/download-result', methods=['POST', 'OPTIONS'])
 def download():
-    data = request.get_json()
-    roll_number = data.get("roll_number")
+    # Instantly answer browser preflight check
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "ok"}), 200
 
-    if not roll_number:
-        return jsonify({"error": "Roll number is required"}), 400
+    try:
+        data = request.get_json(force=True)
+        roll_number = data.get("roll_number")
 
-    # Run the Playwright async process inside the Flask endpoint
-    pdf_path = asyncio.run(fetch_and_generate_pdf(roll_number))
+        if not roll_number:
+            return jsonify({"error": "Roll number is required"}), 400
 
-    if pdf_path and os.path.exists(pdf_path):
-        # Send PDF file as download attachment directly to phone
-        return send_file(
-            pdf_path,
-            as_attachment=True,
-            download_name=f"Result_{roll_number}.pdf",
-            mimetype="application/pdf"
-        )
-    else:
-        return jsonify({"error": "Result not found or university server unreachable"}), 444
+        pdf_path = asyncio.run(fetch_and_generate_pdf(roll_number))
+
+        if pdf_path and os.path.exists(pdf_path):
+            return send_file(
+                pdf_path,
+                as_attachment=True,
+                download_name=f"Result_{roll_number}.pdf",
+                mimetype="application/pdf"
+            )
+        else:
+            return jsonify({"error": "Result not found or university server error"}), 404
+
+    except Exception as e:
+        print(f"Unhandled Exception: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
