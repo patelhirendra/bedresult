@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Exam Result</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 40px 15px; background: #f4f7f6; }
+        .card { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        input { width: 90%; padding: 12px; margin: 15px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; width: 95%; }
+        button:disabled { background: #888; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>B.Ed 4th Sem Result</h2>
+    <p>Enter your Roll Number to download PDF</p>
+    
+    <input type="text" id="rollNumber" placeholder="e.g., 2536510029" maxlength="15">
+    <button id="downloadBtn" onclick="requestResult()">Download PDF</button>
+    
+    <div id="status"></div>
+</div>
+
+<script>
+async function requestResult() {
+    const roll = document.getElementById("rollNumber").value.trim();
+    const status = document.getElementById("status");
+    const btn = document.getElementById("downloadBtn");
+
+    if (!roll) {
+        status.innerText = "Please enter a roll number.";
+        status.style.color = "red";
+        return;
+    }
+
+    btn.disabled = true;
+    status.innerText = "Fetching result from University portal...";
+    status.style.color = "#007bff";
+
+    try {
+        // Replace with your actual backend server URL once deployed (e.g. Render/Railway)
+        const BACKEND_URL = "http://localhost:5000/download-result"; 
+
+        const response = await fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roll_number: roll })
+        });
+
+        if (response.ok) {
+            // Converts response stream to blob for direct phone download
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = downloadUrl;
+            a.download = `Result_${roll}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            
+            status.innerText = "Download complete!";
+            status.style.color = "green";
+        } else {
+            status.innerText = "Result not found or server busy.";
+            status.style.color = "red";
+        }
+    } catch (err) {
+        status.innerText = "Error connecting to server.";
+        status.style.color = "red";
+    } finally {
+        btn.disabled = false;
+    }
+}
+</script>
+
+</body>
+</html>
