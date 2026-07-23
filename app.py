@@ -1,13 +1,20 @@
-import os
-import time
-import base64
-import asyncio
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, make_response
 from flask_cors import CORS
-from playwright.async_api import async_playwright
 
 app = Flask(__name__)
-CORS(app)  # Enables cross-origin requests from your frontend
+
+# Allow requests specifically from your GitHub Pages origin
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Add an explicit handler for preflight OPTIONS requests
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        return response, 200
 
 BASE_URL = "https://exam.prsuuniv.in"
 LOGIN_URL = f"{BASE_URL}/prsuresult/login"
