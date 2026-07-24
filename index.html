@@ -71,16 +71,16 @@
 <div class="card">
     <h2>PRSU Result Portal</h2>
 
-    <!-- Course Selection Dropdown -->
+    <!-- Course Selector -->
     <label for="courseSelect" style="font-size: 14px; font-weight: 600; color: #333;">Select Course:</label>
     <select id="courseSelect">
         <option value="bed_4">B.Ed - 4th Semester (Regular)</option>
         <option value="msc_botany_2">M.Sc. Botany - 2nd Semester (Regular)</option>
     </select>
 
-    <!-- Fun Dancing GIF -->
+    <!-- Cartoon Animation -->
     <div class="gif-container">
-        <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExemp6emk5ejl1NGUzNGw3YnR0bGxzNDJqZ3RqdTFtZm5idmVnbWx5NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/NsIlMDHvA0dbgzhZr7/giphy.gif" alt="Dancing Cartoon">
+        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z2eWg2bmtseTNjMWc0NXRiaThtazE2eGl0ZjlpeTZsM3o4bDZmdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/blSTtZehjAZ8I/giphy.gif" alt="Dancing Cartoon">
     </div>
 
     <!-- Roll Number Input -->
@@ -89,13 +89,11 @@
 
     <div id="status"></div>
 
-    <!-- Server Warning Note -->
     <div class="note">
         ⚠️ Server is slow, please be patient after clicking View Result.
     </div>
 </div>
 
-<!-- Footer with direct Telegram link -->
 <footer>
     Having an issue? Connect on Telegram: 
     <a href="https://t.me/HirendraPatel" target="_blank">@HirendraPatel</a>
@@ -115,7 +113,7 @@ async function openResult() {
     }
 
     btn.disabled = true;
-    status.innerText = "Fetching result from PRSU... Please wait...";
+    status.innerText = "Fetching result link... Please wait...";
     status.style.color = "#007bff";
 
     try {
@@ -130,12 +128,13 @@ async function openResult() {
 
         const data = await response.json();
 
-        if (response.ok && data.result_url) {
-            status.innerText = "Redirecting to result...";
+        if (response.ok && data.success && data.result_url) {
+            status.innerText = "Opening result...";
             status.style.color = "green";
+            // Redirect the page directly to the full PRSU result URL
             window.location.href = data.result_url;
         } else {
-            status.innerText = "Result not found. Please verify roll number and selected course.";
+            status.innerText = data.error || "Result not found. Check roll number.";
             status.style.color = "red";
         }
     } catch (err) {
