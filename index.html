@@ -2,28 +2,109 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B.Ed Result Portal</title>
+    <title>PRSU Result Portal</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px 15px; background: #f0f2f5; }
-        .card { max-width: 380px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        input { width: 90%; padding: 12px; margin: 15px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
-        button { background: #007bff; color: white; border: none; padding: 12px; width: 95%; font-size: 16px; border-radius: 5px; cursor: pointer; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; 
+            padding: 30px 15px; 
+            background: #f0f2f5; 
+            margin: 0;
+        }
+        .card { 
+            max-width: 380px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        h2 { margin-top: 0; color: #1a73e8; }
+        select, input { 
+            width: 90%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            font-size: 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box;
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            width: 90%; 
+            font-size: 16px; 
+            font-weight: 600;
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin-top: 10px;
+        }
         button:disabled { background: #aaa; }
-        #status { margin-top: 15px; font-weight: bold; }
+        .gif-container { margin: 10px 0 -5px 0; }
+        .gif-container img { height: 75px; width: auto; }
+        .note { 
+            font-size: 12px; 
+            color: #d93025; 
+            background: #fce8e6; 
+            padding: 8px; 
+            border-radius: 5px; 
+            margin-top: 15px;
+        }
+        #status { margin-top: 15px; font-weight: bold; font-size: 14px; }
+        footer { 
+            margin-top: 25px; 
+            font-size: 13px; 
+            color: #555; 
+        }
+        footer a { 
+            color: #0088cc; 
+            text-decoration: none; 
+            font-weight: bold; 
+        }
+        footer a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>Check B.Ed 4th Sem Result</h2>
+    <h2>PRSU Result Portal</h2>
+
+    <!-- Course Selection Dropdown -->
+    <label for="courseSelect" style="font-size: 14px; font-weight: 600; color: #333;">Select Course:</label>
+    <select id="courseSelect">
+        <option value="bed_4">B.Ed - 4th Semester (Regular)</option>
+        <option value="msc_botany_2">M.Sc. Botany - 2nd Semester (Regular)</option>
+    </select>
+
+    <!-- Fun Dancing GIF -->
+    <div class="gif-container">
+        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Z2eWg2bmtseTNjMWc0NXRiaThtazE2eGl0ZjlpeTZsM3o4bDZmdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/blSTtZehjAZ8I/giphy.gif" alt="Dancing Cartoon">
+    </div>
+
+    <!-- Roll Number Input -->
     <input type="text" id="rollNumber" placeholder="Enter Roll Number">
     <button id="submitBtn" onclick="openResult()">View Result</button>
+
     <div id="status"></div>
+
+    <!-- Server Warning Note -->
+    <div class="note">
+        ⚠️ Server is slow, please be patient after clicking View Result.
+    </div>
 </div>
+
+<!-- Footer with direct Telegram link -->
+<footer>
+    Having an issue? Connect on Telegram: 
+    <a href="https://t.me/HirendraPatel" target="_blank">@HirendraPatel</a>
+</footer>
 
 <script>
 async function openResult() {
     const roll = document.getElementById("rollNumber").value.trim();
+    const courseKey = document.getElementById("courseSelect").value;
     const status = document.getElementById("status");
     const btn = document.getElementById("submitBtn");
 
@@ -34,14 +115,17 @@ async function openResult() {
     }
 
     btn.disabled = true;
-    status.innerText = "Fetching result...";
+    status.innerText = "Fetching result from PRSU... Please wait...";
     status.style.color = "#007bff";
 
     try {
         const response = await fetch("https://bedresult-production.up.railway.app/get-result-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roll_number: roll })
+            body: JSON.stringify({ 
+                roll_number: roll,
+                course_key: courseKey 
+            })
         });
 
         const data = await response.json();
@@ -49,15 +133,13 @@ async function openResult() {
         if (response.ok && data.result_url) {
             status.innerText = "Redirecting to result...";
             status.style.color = "green";
-            
-            // Redirect the user's tab directly to the PRSU result page
             window.location.href = data.result_url;
         } else {
-            status.innerText = "Result not found. Check roll number.";
+            status.innerText = "Result not found. Please verify roll number and selected course.";
             status.style.color = "red";
         }
     } catch (err) {
-        status.innerText = "Error connecting to server.";
+        status.innerText = "Error connecting to server. Try again later.";
         status.style.color = "red";
     } finally {
         btn.disabled = false;
