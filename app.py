@@ -13,13 +13,31 @@ BASE_URL = "https://exam.prsuuniv.in"
 def encode_b64(value):
     return base64.b64encode(str(value).encode('utf-8')).decode('utf-8')
 
-def get_result_redirect_url(roll_number):
+# Map of supported courses to their respective PRSU parameter values
+COURSE_MAP = {
+    "bed_4": {
+        "coursename": "Bachelor of Education",
+        "semester": "4",
+        "studentty": "REGULAR"
+    },
+    "msc_botany_2": {
+        "coursename": "Master of Science in Botany",
+        "semester": "2",
+        "studentty": "REGULAR"
+    }
+}
+
+def get_result_redirect_url(roll_number, course_key):
+    course_info = COURSE_MAP.get(course_key)
+    if not course_info:
+        return None
+
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
 
-    studentty_b64 = encode_b64("REGULAR")
-    semester_b64 = encode_b64("4")
-    coursename_b64 = encode_b64("Bachelor of Education")
+    studentty_b64 = encode_b64(course_info["studentty"])
+    semester_b64 = encode_b64(course_info["semester"])
+    coursename_b64 = encode_b64(course_info["coursename"])
     
     salted_roll = f"{random.randint(1000, 9999)}{roll_number}@@{random.randint(1000, 9999)}"
     examroll_b64 = encode_b64(salted_roll)
@@ -60,11 +78,12 @@ def get_url():
 
     data = request.get_json(force=True)
     roll_number = data.get("roll_number")
+    course_key = data.get("course_key", "bed_4")
 
     if not roll_number:
         return jsonify({"error": "Roll number is required"}), 400
 
-    result_url = get_result_redirect_url(roll_number)
+    result_url = get_result_redirect_url(roll_number, course_key)
 
     if result_url:
         return jsonify({"success": True, "result_url": result_url})
